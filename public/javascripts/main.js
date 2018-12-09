@@ -79,7 +79,7 @@ $(document).ready(function () {
     $('#pause').click(function () {
         audioElement.pause();
     });
-
+    //Mutes and unmutes, and saves the current volume when it mutes
     $('#mute').click(function () {
         if (audioElement.volume != 0) {
             volumeControl.val(0);
@@ -122,7 +122,11 @@ $(document).ready(function () {
             return "Current Interval: " + spannedInterval + " minutes.";
         });
     }
-
+    /**
+     * Updates the UI with the current genre preferences.
+     * @param {*} genrePreferences 
+     * @returns a list of the current genre preferences to be displayed
+     */
     function updateGenreDisplay(genrePreferences) {
         $("#genreDisplay").html(function () {
             if (!genrePreferences) {
@@ -155,7 +159,11 @@ $(document).ready(function () {
             }
         });
     }
-
+    /**
+     * Updates the UI with the current year preferences. 
+     * @param {*} yearPreferences 
+     * @returns a range with the current year preferences
+     */
     function updateDecadeDisplay(decadePreferences) {
         $("#decadeDisplay").html(function () {
             if (!decadePreferences) {
@@ -185,7 +193,11 @@ $(document).ready(function () {
             $("#customIntervalValue").val((((TIME_INTERVAL) / 1000) / 60));
         }
     }
-
+    /**
+     * Creates the genre checkboxes for advanced settings.
+     * Unfortunately hardcoded, so if a new genre was added you'd need to add it here.
+     * @param {*} genrePreferences 
+     */
     function determineCheckboxes(genrePreferences) {
         if (genrePreferences) {
             if (genrePreferences.indexOf('Reggae') > -1) {
@@ -238,7 +250,9 @@ $(document).ready(function () {
             $("#endingDecade").val(decadePreferences[1])
         }
     }
-
+    /**
+     * Creates the genre preferences based on id3 information from getGenres().
+     */
     function getGenres() {
         return new Promise(function (resolve, reject) {
             $.ajax({
@@ -256,7 +270,9 @@ $(document).ready(function () {
             });
         });
     }
-
+    /**
+     * Creates the genre preferences based on id3 information from getGenres().
+     */
     function submitGenres() {
         let genres = [];
         for (var key in genreList.counts) {
@@ -266,7 +282,10 @@ $(document).ready(function () {
         genrePreferences = [];
         genrePreferences = populateGenres(genrePreferences);
     }
-
+    /**
+     * Creates the decade preferences and checks how many songs are available.
+     * If fewer than five, throws an error.
+     */
     function submitYears() {
         decadePreferences = [];
         decadePreferences = populateDecades(decadePreferences);
@@ -298,41 +317,35 @@ $(document).ready(function () {
      * @param {*} decadeArray 
      */
     function findNextSongWithPreferences(genreArray, decadeArray) {
-        //if there are no preferences, just makes a call to /api/next which selects from the whole database
+        let songList=[];
+        //if there are no preferences, makes a dummy array first
         if (genreArray == null && decadeArray == null) {
-            $.ajax({
-                url: '/api/next',
-                data: null,
-                type: "POST",
-                success: function (responseData) {
-                    console.log(responseData);
-                    audioElement.src = responseData;
-                }, error: console.error
-            });
+            var tempArray=[1940, 2019]
+            songList = makeSongList(genreArray, tempArray);
         } else {
             //run through the whole JSON file and get the list of songs that match those genres, and randomize through the list
-            let songList = makeSongList(genreArray, decadeArray);
-
-            console.log(songList);
-            let name = '';
-            index = parseInt(Math.random() * songList.length);
-            name = songList[index];
-            console.log(name);
-
-            // post request to /api/song in the headers make a tag called song, put name there
-            $.ajax({
-                url: '/api/song',
-                data: null,
-                headers: {
-                    'song': name
-                },
-                type: "POST",
-                success: function (responseData) {
-                    console.log(responseData)
-                    audioElement.src = responseData;
-                }, error: console.error
-            });
+            songList = makeSongList(genreArray, decadeArray);
         }
+
+        console.log(songList);
+        let name = '';
+        index = parseInt(Math.random() * songList.length);
+        name = songList[index];
+        console.log(name);
+
+        // post request to /api/song in the headers make a tag called song, put name there
+        $.ajax({
+            url: '/api/song',
+            data: null,
+            headers: {
+                'song': name
+            },
+            type: "POST",
+            success: function (responseData) {
+                console.log(responseData)
+                audioElement.src = responseData;
+            }, error: console.error
+        }); 
     }
     /** Returns a list of songs with the given genre and decade preferences.
      *  Also used to get a count of how many songs pass the filter for sanity checks.
