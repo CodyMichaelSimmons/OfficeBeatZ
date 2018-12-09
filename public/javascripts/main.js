@@ -11,7 +11,7 @@ $(document).ready(function () {
     let genreList;
     let genres = []
     let genrePreferences = [];
-    let decadePreferences = [];
+    let yearPreferences = [];
     let songTitle="All Star";
     let songArtist="Smashmouth";
 
@@ -22,7 +22,7 @@ $(document).ready(function () {
     }
 
     try {
-        decadePreferences = JSON.parse(localStorage.getItem("DECADE_PREFERENCES"));
+        yearPreferences = JSON.parse(localStorage.getItem("DECADE_PREFERENCES"));
     } catch (error) {
 
     }
@@ -37,16 +37,16 @@ $(document).ready(function () {
         for (let i = 0; i < genres.length; i++) {
             console.log(genres[i] + ": " + genreList.counts[genres[i]]);
         }
-        findNextSongWithPreferences(genrePreferences, decadePreferences)
+        findNextSongWithPreferences(genrePreferences, yearPreferences)
     });
 
     // Updates entries requiring TIME_INTERVAL
     determineRadioButton(TIME_INTERVAL);
     determineCheckboxes(genrePreferences);
-    determineDecadeInputs(decadePreferences);
+    determineYearInputs(yearPreferences);
     updateInterval(TIME_INTERVAL);
     updateGenreDisplay(genrePreferences);
-    updateDecadeDisplay(decadePreferences);
+    updateDecadeDisplay(yearPreferences);
     allSelectedOrNot();
 
     $('#play').click(function () {
@@ -70,7 +70,7 @@ $(document).ready(function () {
 
     // Makes an AJAX request for a new song and then replaces current song with the response.
     function loopPlayer(audioElement) {
-        findNextSongWithPreferences(genrePreferences, decadePreferences);
+        findNextSongWithPreferences(genrePreferences, yearPreferences);
         // Delay to prevent overlap while changing audio source.
         setTimeout(function () {
             audioElement.play();
@@ -81,7 +81,7 @@ $(document).ready(function () {
     $('#pause').click(function () {
         audioElement.pause();
     });
-
+    //Mutes and unmutes, and saves the current volume when it mutes.
     $('#mute').click(function () {
         if (audioElement.volume != 0) {
             volumeControl.val(0);
@@ -101,7 +101,7 @@ $(document).ready(function () {
     //Loads up a new song if a song is already playing, otherwise does nothing.
     $('#skip').click(function () {
         if (!audioElement.paused) {
-            findNextSongWithPreferences(genrePreferences, decadePreferences);
+            findNextSongWithPreferences(genrePreferences, yearPreferences);
             audioElement.play();
         }
     });
@@ -124,7 +124,11 @@ $(document).ready(function () {
             return "Current Interval: " + spannedInterval + " minutes.";
         });
     }
-
+    /**
+     * Updates the UI with the current genre preferences.
+     * @param {*} genrePreferences 
+     * @returns a list of the current genre preferences to be displayed
+     */
     function updateGenreDisplay(genrePreferences) {
         $("#genreDisplay").html(function () {
             if (!genrePreferences) {
@@ -157,15 +161,19 @@ $(document).ready(function () {
             }
         });
     }
-
-    function updateDecadeDisplay(decadePreferences) {
+    /**
+     * Updates the UI with the current year preferences. 
+     * @param {*} yearPreferences 
+     * @returns a range with the current year preferences
+     */
+    function updateDecadeDisplay(yearPreferences) {
         $("#decadeDisplay").html(function () {
-            if (!decadePreferences) {
+            if (!yearPreferences) {
                 let spannedDecades = "<span id='spannedDecades'> 1940 </span> - <span id='spannedDecades'> 2019 </span>";
                 return "Current Timespan: " + spannedDecades + ".";
             }
-            if (decadePreferences.length > 0) {
-                let spannedDecades = "<span id='spannedDecades'>" + decadePreferences[0] + "</span>" + " - " + "<span id='spannedDecades'>" + decadePreferences[1] + "</span>";
+            if (yearPreferences.length > 0) {
+                let spannedDecades = "<span id='spannedDecades'>" + yearPreferences[0] + "</span>" + " - " + "<span id='spannedDecades'>" + yearPreferences[1] + "</span>";
                 return "Current Timespan: " + spannedDecades + ".";
             } else {
                 let spannedDecades = "<span id='spannedDecades'> 1940 </span> - <span id='spannedDecades'> 2019 </span>";
@@ -187,7 +195,11 @@ $(document).ready(function () {
             $("#customIntervalValue").val((((TIME_INTERVAL) / 1000) / 60));
         }
     }
-
+    /**
+     * Creates the genre checkboxes for advanced settings.
+     * Unfortunately hardcoded, so if a new genre was added you'd need to add it here.
+     * @param {*} genrePreferences 
+     */
     function determineCheckboxes(genrePreferences) {
         if (genrePreferences) {
             if (genrePreferences.indexOf('Reggae') > -1) {
@@ -234,13 +246,15 @@ $(document).ready(function () {
         }
     }
 
-    function determineDecadeInputs(decadePreferences) {
-        if (decadePreferences) {
-            $("#startingDecade").val(decadePreferences[0])
-            $("#endingDecade").val(decadePreferences[1])
+    function determineYearInputs(yearPreferences) {
+        if (yearPreferences) {
+            $("#startingDecade").val(yearPreferences[0])
+            $("#endingDecade").val(yearPreferences[1])
         }
     }
-
+    /**
+     * Makes a post request to /api/genres which returns a JSON for all the id3 info.
+     */
     function getGenres() {
         return new Promise(function (resolve, reject) {
             $.ajax({
@@ -258,7 +272,9 @@ $(document).ready(function () {
             });
         });
     }
-
+    /**
+     * Creates the genre preferences based on id3 information from getGenres().
+     */
     function submitGenres() {
         let genres = [];
         for (var key in genreList.counts) {
@@ -268,12 +284,15 @@ $(document).ready(function () {
         genrePreferences = [];
         genrePreferences = populateGenres(genrePreferences);
     }
-
+    /**
+     * Creates the decade preferences and checks how many songs are available.
+     * If fewer than five, throws an error.
+     */
     function submitYears() {
-        decadePreferences = [];
-        decadePreferences = populateDecades(decadePreferences);
+        yearPreferences = [];
+        yearPreferences = populateYears(yearPreferences);
 
-        if (makeSongList(genrePreferences, decadePreferences).length < 5) {
+        if (makeSongList(genrePreferences, yearPreferences).length < 5) {
             $("#formFeedback").html(function () {
                 let errorMessage = "<span id='errorMessage'> Error! </span>"
                 return errorMessage + "Fewer than five songs available, please broaden your preferences."
@@ -282,9 +301,9 @@ $(document).ready(function () {
         } else {
             updateGenreDisplay(genrePreferences);
             localStorage.setItem("GENRE_PREFERENCES", JSON.stringify(genrePreferences));
-            updateDecadeDisplay(decadePreferences);
-            localStorage.setItem("DECADE_PREFERENCES", JSON.stringify(decadePreferences));
-            findNextSongWithPreferences(genrePreferences, decadePreferences);
+            updateDecadeDisplay(yearPreferences);
+            localStorage.setItem("DECADE_PREFERENCES", JSON.stringify(yearPreferences));
+            findNextSongWithPreferences(genrePreferences, yearPreferences);
 
             $("#formFeedback").html(function () {
                 let successMessage = "<span id='successMessage'> Success! </span>"
@@ -297,63 +316,58 @@ $(document).ready(function () {
      * Makes a post request to get the next song based on preferences.
      * It works even if the preferences are null.
      * @param {*} genreArray 
-     * @param {*} decadeArray 
+     * @param {*} yearArray 
      */
-    function findNextSongWithPreferences(genreArray, decadeArray) {
-        //if there are no preferences, just makes a call to /api/next which selects from the whole database
-        if (genreArray == null && decadeArray == null) {
-            $.ajax({
-                url: '/api/next',
-                data: null,
-                type: "POST",
-                success: function (responseData) {
-                    console.log(responseData);
-                    audioElement.src = responseData;
-                }, error: console.error
-            });
+    function findNextSongWithPreferences(genreArray, yearArray) {
+        let songList=[];
+        //if there are no preferences, makes a dummy array that should include everything
+        if (genreArray == null && yearArray == null) {
+            var tempArray=[1940, 2019]
+            songList = makeSongList(genreArray, tempArray);
         } else {
             //run through the whole JSON file and get the list of songs that match those genres, and randomize through the list
-            let songList = makeSongList(genreArray, decadeArray);
-            let name = '';
-            index = parseInt(Math.random() * songList.length);
-            name = songList[index].filename;
-            songTitle=songList[index].title+" ";
-            songArtist=songList[index].artist;
-            document.getElementById("titleID").innerHTML = songTitle;
-            document.getElementById("artistID").innerHTML = songArtist;
-            console.log(name);
-
-            // post request to /api/song in the headers make a tag called song, put name there
-            $.ajax({
-                url: '/api/song',
-                data: null,
-                headers: {
-                    'song': name
-                },
-                type: "POST",
-                success: function (responseData) {
-                    console.log(responseData)
-                    audioElement.src = responseData;
-                }, error: console.error
-            });
+            songList = makeSongList(genreArray, yearArray);
         }
+        let name = '';
+        index = parseInt(Math.random() * songList.length);
+        name = songList[index].filename;
+        songTitle=songList[index].title+" ";
+        songArtist=songList[index].artist;
+        document.getElementById("titleID").innerHTML = songTitle;
+        document.getElementById("artistID").innerHTML = songArtist;
+        console.log(name);
+
+        // post request to /api/song in the headers make a tag called song, put name there
+        $.ajax({
+            url: '/api/song',
+            data: null,
+            headers: {
+                'song': name
+            },
+            type: "POST",
+            success: function (responseData) {
+                console.log(responseData)
+                audioElement.src = responseData;
+            }, error: console.error
+        });
+        
     }
-    /** Returns a list of songs with the given genre and decade preferences.
+    /** Returns a list of songs with the given genre and year preferences.
      *  Also used to get a count of how many songs pass the filter for sanity checks.
      *  Do not call this function if both are null, but it's fine if one or the other is null.
      *  @param {*} genreArray 
-     *  @param {*} decadeArray
+     *  @param {*} yearArray
      *  @returns an array containing all songs that pass the filter
      * */
-    function makeSongList(genreArray, decadeArray) {
+    function makeSongList(genreArray, yearArray) {
         let songList = [];
-        if (genreArray != null && decadeArray != null) {
+        if (genreArray != null && yearArray != null) {
             for (key in genreList.songs) {
-                if (genreArray.includes(genreList.songs[key].genre) && decadeArray[0] <= genreList.songs[key].year && genreList.songs[key].year <= decadeArray[1]) {
+                if (genreArray.includes(genreList.songs[key].genre) && yearArray[0] <= genreList.songs[key].year && genreList.songs[key].year <= yearArray[1]) {
                     songList.push(genreList.songs[key]);
                 }
             }
-        } else if (decadeArray == null) {
+        } else if (yearArray == null) {
             for (key in genreList.songs) {
                 if (genreArray.includes(genreList.songs[key].genre)) {
                     songList.push(genreList.songs[key]);
@@ -361,7 +375,7 @@ $(document).ready(function () {
             }
         } else {
             for (key in genreList.songs) {
-                if (decadeArray[0] <= genreList.songs[key].year && genreList.songs[key].year <= decadeArray[1]) {
+                if (yearArray[0] <= genreList.songs[key].year && genreList.songs[key].year <= yearArray[1]) {
                     songList.push(genreList.songs[key]);
                 }
             }
@@ -422,14 +436,14 @@ $(document).ready(function () {
         return genrePreferences;
     }
 
-    function populateDecades(decadePreferences) {
+    function populateYears(yearPreferences) {
         let startingDecade = parseInt($('#startingDecade').val()) || 1940;
         let endingDecade = parseInt($('#endingDecade').val()) || 2019;
 
-        decadePreferences.push(startingDecade);
-        decadePreferences.push(endingDecade);
+        yearPreferences.push(startingDecade);
+        yearPreferences.push(endingDecade);
 
-        return decadePreferences;
+        return yearPreferences;
     }
 
     function intervalHander() {
