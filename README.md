@@ -29,3 +29,5 @@ To run tests, run the command `npm test` in your terminal while in the app direc
 To deploy a branch after changes have been made, go to the app on Heroku and click the `Deploy` option. It will ask which branch you want to deploy. Select the most recently edited branch. If any errors occur, Heroku will abort the process and give you an error message.
 
 Production can be found [here](http://officebeatz.net/). And beta / staging can be found [here](http://beta.officebeatz.net/).
+
+Howdy =) -Garrett
